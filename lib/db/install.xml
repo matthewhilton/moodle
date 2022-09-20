@@ -3889,6 +3889,7 @@
         <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The field used to naturally sort this link."/>
         <FIELD NAME="competencyid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course competency this activity is linked to."/>
         <FIELD NAME="ruleoutcome" TYPE="int" LENGTH="2" NOTNULL="true" SEQUENCE="false" COMMENT="The outcome when an activity is completed."/>
+        <FIELD NAME="overridegrade" TYPE="int" LENGTH="2" NOTNULL="true" SEQUENCE="false" DEFAULT="0" COMMENT="Enables overriding existing competency grade."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
