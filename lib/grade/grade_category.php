@@ -2269,20 +2269,39 @@ class grade_category extends grade_object {
             $params = array('courseid'=>$this->courseid, 'itemtype'=>'category', 'iteminstance'=>$this->id);
         }
 
-        if (!$grade_items = grade_item::fetch_all($params)) {
-            // create a new one
-            $grade_item = new grade_item($params, false);
-            $grade_item->gradetype = GRADE_TYPE_VALUE;
-            $grade_item->insert('system');
+        // First obtain a lock to prevent duplicate grade items being created.
+        $locktype = 'core_grade_get_grade_item';
+        $lockfactory = \core\lock\lock_config::get_lock_factory($locktype);
+        $resource = 'id:' . $this->id;
+        $timeout = 5;
 
-        } else if (count($grade_items) == 1) {
-            // found existing one
-            $grade_item = reset($grade_items);
-
+        if ($lock = $lockfactory->get_lock($resource, $timeout)) {
+            // Find the grade item. If none are found, create a new one.
+            // Do this inside a lock to avoid duplicates in read/write slave DB configs.
+            try {
+                if (!$grade_items = grade_item::fetch_all($params)) {
+                    // create a new one
+                    $grade_item = new grade_item($params, false);
+                    $grade_item->gradetype = GRADE_TYPE_VALUE;
+                    sleep(5);
+                    $grade_item->insert('system');
+                } else if (count($grade_items) == 1) {
+                    // found existing one
+                    $grade_item = reset($grade_items);
+                } else {
+                    debugging("Found more than one grade_item attached to category id:".$this->id);
+                    // return first one
+                    $grade_item = reset($grade_items);
+                }
+            } catch (\Throwable $e) {
+                // Release lock and re-throw.
+                $lock->release();
+                throw $e;
+            }
+            $lock->release();
         } else {
-            debugging("Found more than one grade_item attached to category id:".$this->id);
-            // return first one
-            $grade_item = reset($grade_items);
+            // We did not get access to the resource in time, give up.
+            throw new moodle_exception('locktimeout');
         }
 
         return $grade_item;
