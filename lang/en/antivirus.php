@@ -64,6 +64,7 @@ $string['quarantinedfiles'] = 'Antivirus quarantined files';
 $string['quarantinedisabled'] = 'Quarantine is disabled. The file is not stored.';
 $string['quarantinetime_desc'] = 'Quarantined files older than the specified period will be removed.';
 $string['quarantinetime'] = 'Maximum quarantine time';
+$string['statuschecks'] = 'Status check';
 $string['threshold_desc'] = 'How far back to check against previous results for errors etc. as reported in {$a}.';
 $string['threshold'] = 'Threshold for status check';
 $string['taskcleanup'] = 'Clean up quarantined files.';
