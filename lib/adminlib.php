@@ -11647,3 +11647,88 @@ class admin_settings_h5plib_handler_select extends admin_setting_configselect {
         return true;
     }
 }
+
+/**
+ * Displays the result of a check via ajax.
+ *
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright 2023 Matthew Hilton <matthewhilton@catalyst-au.net>
+ */
+class admin_setting_check extends admin_setting {
+    /** @var string $checkreference Reference of check to use */
+    private $checkreference;
+
+    /** @var bool $includedetails if the details of result are included. **/
+    private $includedetails;
+
+    /**
+     * Creates check setting.
+     *
+     * @param string $name name of setting
+     * @param string $reference globally unique reference to a check.
+     * Note the class or object itself is intentionally not passed in here,
+     * as nothing other than the reference is sent to the webservice.
+     * @param bool $includedetails if the detauls of the result are included
+     */
+    public function __construct(string $name, string $reference, bool $includedetails = false) {
+        $this->nosave = true;
+        $this->checkreference = $reference;
+        $this->includedetails = $includedetails;
+
+        // Find the name from the check. Note its possible the check may not exist,
+        // So fallback to the reference if it does not.
+        $check = \core\check\manager::get_check($reference);
+        $heading = !empty($check) ? $check->get_name() : $reference;
+
+        parent::__construct($name, $heading, '', '');
+    }
+
+    /**
+     * Returns setting (unused)
+     *
+     * @return true
+     */
+    public function get_setting() {
+        return true;
+    }
+
+    /**
+     * Writes the setting (unused)
+     *
+     * @param mixed $data
+     */
+    public function write_setting($data) {
+        return '';
+    }
+
+    /**
+     * Ouputs the admin setting HTML to be rendered.
+     *
+     * @param mixed $data
+     * @param string $query
+     * @return string html
+     */
+    public function output_html($data, $query = '') {
+        global $PAGE, $OUTPUT;
+
+        $domref = uniqid($this->checkreference);
+
+        // The actual result is obtained via ajax,
+        // since its likely somewhat slow to obtain.
+        $context = [
+            'domselector' => '[data-check-reference="' . $domref . '"]',
+            'reference' => $this->checkreference,
+            'includedetails' => $this->includedetails,
+        ];
+        $PAGE->requires->js_call_amd('core/check/check_result', 'getAndRender', $context);
+
+        // Render a generic loading icon while waiting for ajax.
+        $loadingstr = get_string('checkloading');
+        $loadingicon = $OUTPUT->pix_icon('i/loading', $loadingstr);
+
+        $statusdiv = \html_writer::div($loadingicon . $loadingstr, '', ['data-check-reference' => $domref]);
+
+        return format_admin_setting($this, $this->visiblename, '', $statusdiv);
+    }
+}
+
