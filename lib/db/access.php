@@ -2741,4 +2741,11 @@ $capabilities = array(
             'manager' => CAP_ALLOW,
         ]
     ],
+
+    // Allow users to view check results.
+    'moodle/site:getcheckresult' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [],
+    ],
 );

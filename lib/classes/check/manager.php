@@ -58,6 +58,31 @@ class manager {
     }
 
     /**
+     * Returns the check that has the given reference.
+     *
+     * @param string $reference Unique reference to check
+     * @return check|null check if found, otherwise null
+     */
+    public static function get_check(string $reference): ?check {
+        $checks = array_merge(
+            self::get_performance_checks(),
+            self::get_status_checks(),
+            self::get_security_checks()
+        );
+
+        $matching = array_filter($checks, function($check) use ($reference) {
+            return $check->get_ref() == $reference;
+        });
+
+        if (count($matching) > 1) {
+            throw new \coding_exception("Multiple checks exist for this reference.
+                This indicates a check class has a non-unique reference.");
+        }
+
+        return count($matching) == 1 ? current($matching) : null;
+    }
+
+    /**
      * Return all performance checks
      *
      * @return array of check objects

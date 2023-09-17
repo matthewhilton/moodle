@@ -52,5 +52,44 @@ class check_test extends \advanced_testcase {
 
         $CFG->passwordpolicy = $prior;
     }
+
+    /**
+     * Provides values to test_get_check
+     *
+     * @return array
+     */
+    public static function get_check_provider(): array {
+        return [
+            'check that exists' => [
+                'reference' => (new \core\check\environment\antivirus())->get_ref(),
+                'exists' => true,
+            ],
+            'check that does not exist' => [
+                'reference' => 'test_thisisnotacheck',
+                'exists' => false,
+            ],
+        ];
+    }
+
+    /**
+     * Tests get_check function
+     *
+     * @param string $reference
+     * @param bool $shouldexist
+     * @dataProvider get_check_provider
+     * @covers \core\check\manager::get_check
+     */
+    public function test_get_check($reference, $shouldexist) {
+        $check = \core\check\manager::get_check($reference);
+
+        if (!$shouldexist) {
+            $this->assertNull($check);
+        }
+
+        if ($shouldexist) {
+            $this->assertNotNull($check);
+            $this->assertEquals($reference, $check->get_ref());
+        }
+    }
 }
 

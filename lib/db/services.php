@@ -304,6 +304,13 @@ $functions = array(
         'description' => 'Delete the calendar subscription',
         'type' => 'write',
         'ajax' => true
+      ],
+    'core_check_get_result' => [
+        'classname' => 'core\check\external\get_result',
+        'description' => 'Executes a check and returns the result',
+        'type' => 'read',
+        'ajax' => true,
+        'readonlysession' => true,
     ],
     'core_cohort_add_cohort_members' => array(
         'classname' => 'core_cohort_external',

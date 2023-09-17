@@ -1816,6 +1816,55 @@ class core_renderer extends renderer_base {
     }
 
     /**
+     * Renders a full check API result including summary and details
+     *
+     * @param core\check\result $result the result of a check
+     * @param bool $includedetails if true, details are included as well
+     * @return string rendered html
+     */
+    protected function render_check_full_result(core\check\result $result, bool $includedetails): string {
+        // Initially render just badge itself.
+        $renderedresult = $this->render_from_template($result->get_template_name(), $result->export_for_template($this));
+
+        // Add summary.
+        $renderedresult .= ' ' . $result->get_summary();
+
+        // Wrap in notificaiton.
+        $notificationmap = [
+            \core\check\result::NA => '',
+            \core\check\result::OK => \core\output\notification::NOTIFY_SUCCESS,
+            \core\check\result::INFO => \core\output\notification::NOTIFY_INFO,
+            \core\check\result::UNKNOWN => '',
+            \core\check\result::WARNING => \core\output\notification::NOTIFY_WARNING,
+            \core\check\result::ERROR => \core\output\notification::NOTIFY_ERROR,
+            \core\check\result::CRITICAL => \core\output\notification::NOTIFY_ERROR,
+        ];
+        $notificationtype = $notificationmap[$result->get_status()] ?? '';
+
+        if ($notificationtype != '') {
+            $renderedresult = $this->notification($renderedresult, $notificationtype, false);
+        }
+
+        // If adding details, add on new line.
+        if ($includedetails) {
+            $renderedresult .= $result->get_details();
+        }
+
+        return $renderedresult;
+    }
+
+    /**
+     * Renders a full check API result including summary and details
+     *
+     * @param core\check\result $result the result of a check
+     * @param bool $includedetails if details should be included
+     * @return string HTML fragment
+     */
+    public function check_full_result(core\check\result $result, bool $includedetails = false) {
+        return $this->render_check_full_result($result, $includedetails);
+    }
+
+    /**
      * Renders a Check API result
      *
      * @param core\check\result $result
