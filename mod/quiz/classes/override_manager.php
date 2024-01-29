@@ -49,7 +49,7 @@ class override_manager {
 
         // Ensure an override does not exist already for this user / group in this quiz.
         // Only 1 override is allowed.
-        $params = ['quiz' => $this->quizobj->id];
+        $params = ['quiz' => $this->get_quiz_id()];
 
         if (!empty($formdata->userid)) {
             $params = array_merge($params, ['userid' => $formdata->userid]);
@@ -118,10 +118,10 @@ class override_manager {
         // Update calendar events.
         if ($isgroup) {
             // If is group, must update the entire quiz calendar events.
-            quiz_update_events($this->quizobj);
+            quiz_update_events($this->quizobj->get_quiz());
         } else {
             // If is just a user, can update only their calendar event.
-            quiz_update_events($this->quizobj, (object) $datatoset);
+            quiz_update_events($this->quizobj->get_quiz(), (object) $datatoset);
         }
 
         return $id;
@@ -132,8 +132,8 @@ class override_manager {
     }
 
     private function log_events($formdata) {
-        $groupid = $formdata['groupid'];
-        $userid = $formdata['userid'];
+        $groupid = $formdata['groupid'] ?? null;
+        $userid = $formdata['userid'] ?? null;
 
         // If created override.
         if (empty($formdata['id'])) {
@@ -183,7 +183,7 @@ class override_manager {
     private function clear_unused_values($formdata) {
         foreach (self::KEYS as $key) {
             // If the formdata is the same as the current quiz object data, clear it.
-            if ($formdata[$key] == $this->quizobj->$key) {
+            if (!empty($formdata[$key]) && $formdata[$key] == $this->quizobj->get_quiz()->$key) {
                 $formdata[$key] = null;
             }
         }
@@ -196,10 +196,10 @@ class override_manager {
     }
 
     private function get_group_cache_key($groupid): string {
-        return "{$this->quizobj->id}_g_{$groupid}";
+        return "{$this->get_quiz_id()}_g_{$groupid}";
     }
 
     private function get_user_cache_key($userid): string {
-        return "{$this->quizobj->id}_u_{$userid}";
+        return "{$this->get_quiz_id()}_u_{$userid}";
     }
 }
