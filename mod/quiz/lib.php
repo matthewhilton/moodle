@@ -190,6 +190,8 @@ function quiz_delete_instance($id) {
     $quiz = $DB->get_record('quiz', ['id' => $id], '*', MUST_EXIST);
 
     quiz_delete_all_attempts($quiz);
+
+    // TODO update.
     quiz_delete_all_overrides($quiz);
     quiz_delete_references($quiz->id);
 
@@ -212,86 +214,6 @@ function quiz_delete_instance($id) {
     $DB->delete_records('quiz', ['id' => $quiz->id]);
 
     return true;
-}
-
-/**
- * Deletes a quiz override from the database and clears any corresponding calendar events
- *
- * @param stdClass $quiz The quiz object.
- * @param int $overrideid The id of the override being deleted
- * @param bool $log Whether to trigger logs.
- * @return bool true on success
- */
-function quiz_delete_override($quiz, $overrideid, $log = true) {
-    global $DB;
-
-    if (!isset($quiz->cmid)) {
-        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course);
-        $quiz->cmid = $cm->id;
-    }
-
-    $override = $DB->get_record('quiz_overrides', ['id' => $overrideid], '*', MUST_EXIST);
-
-    // Delete the events.
-    if (isset($override->groupid)) {
-        // Create the search array for a group override.
-        $eventsearcharray = ['modulename' => 'quiz',
-            'instance' => $quiz->id, 'groupid' => (int)$override->groupid];
-        $cachekey = "{$quiz->id}_g_{$override->groupid}";
-    } else {
-        // Create the search array for a user override.
-        $eventsearcharray = ['modulename' => 'quiz',
-            'instance' => $quiz->id, 'userid' => (int)$override->userid];
-        $cachekey = "{$quiz->id}_u_{$override->userid}";
-    }
-    $events = $DB->get_records('event', $eventsearcharray);
-    foreach ($events as $event) {
-        $eventold = calendar_event::load($event);
-        $eventold->delete();
-    }
-
-    $DB->delete_records('quiz_overrides', ['id' => $overrideid]);
-    cache::make('mod_quiz', 'overrides')->delete($cachekey);
-
-    if ($log) {
-        // Set the common parameters for one of the events we will be triggering.
-        $params = [
-            'objectid' => $override->id,
-            'context' => context_module::instance($quiz->cmid),
-            'other' => [
-                'quizid' => $override->quiz
-            ]
-        ];
-        // Determine which override deleted event to fire.
-        if (!empty($override->userid)) {
-            $params['relateduserid'] = $override->userid;
-            $event = \mod_quiz\event\user_override_deleted::create($params);
-        } else {
-            $params['other']['groupid'] = $override->groupid;
-            $event = \mod_quiz\event\group_override_deleted::create($params);
-        }
-
-        // Trigger the override deleted event.
-        $event->add_record_snapshot('quiz_overrides', $override);
-        $event->trigger();
-    }
-
-    return true;
-}
-
-/**
- * Deletes all quiz overrides from the database and clears any corresponding calendar events
- *
- * @param stdClass $quiz The quiz object.
- * @param bool $log Whether to trigger logs.
- */
-function quiz_delete_all_overrides($quiz, $log = true) {
-    global $DB;
-
-    $overrides = $DB->get_records('quiz_overrides', ['quiz' => $quiz->id], 'id');
-    foreach ($overrides as $override) {
-        quiz_delete_override($quiz, $override->id, $log);
-    }
 }
 
 /**

@@ -3,10 +3,13 @@
 namespace mod_quiz;
 
 use cache;
+use calendar_event;
 use coding_exception;
 use mod_quiz\event\group_override_created;
+use mod_quiz\event\group_override_deleted;
 use mod_quiz\event\group_override_updated;
 use mod_quiz\event\user_override_created;
+use mod_quiz\event\user_override_deleted;
 use mod_quiz\event\user_override_updated;
 
 class override_manager {
@@ -87,6 +90,10 @@ class override_manager {
     public function upsert_override($formdata) {
         global $DB;
 
+        // Ensure logged in user can manage overrides.
+        $this->check_capabilties();
+
+        // Validate the formdata. We cannot assume it is valid.
         $this->validate_formdata($formdata);
 
         // Validate and get the data submitted by the form.
@@ -95,6 +102,7 @@ class override_manager {
         // Add the quiz ID.
         $datatoset['quiz'] = $this->get_quiz_id();
 
+        // Update the DB record.
         if (!empty($formdata->id)) {
             $datatoset['id'] = $formdata->id;
             $id = $formdata->id;
@@ -103,19 +111,24 @@ class override_manager {
             $id = $DB->insert_record('quiz_overrides', $datatoset);
         }
 
-        $isgroup = !empty($datatoset['groupid']);
+        $userid = $datatoset['userid'] ?? null;
+        $groupid = $datatoset['groupid'] ?? null;
 
         // Clear the cache.
-        $key = $isgroup ? $this->get_group_cache_key($datatoset['groupid']) : $this->get_user_cache_key($datatoset['userid']);
-        $cache = $this->get_cache();
-        $cache->delete($key);
+        $this->clear_cache($userid, $groupid);
 
         // Trigger moodle events.
-        $this->log_events((array) $formdata);
+        if (empty($formdata->id)) {
+            $this->log_created($id, $userid, $groupid);
+        } else {
+            $this->log_updated($id, $userid, $groupid);
+        }
 
-        quiz_update_open_attempts(['quizid' => $this->quizobj->id]);
+        // Update open events.
+        quiz_update_open_attempts(['quizid' => $this->get_quiz_id()]);
 
         // Update calendar events.
+        $isgroup = !empty($datatoset['groupid']);
         if ($isgroup) {
             // If is group, must update the entire quiz calendar events.
             quiz_update_events($this->quizobj->get_quiz());
@@ -127,33 +140,91 @@ class override_manager {
         return $id;
     }
 
+    private function clear_cache($userid = null, $groupid = null) {
+        $key = !empty($groupid) ? $this->get_group_cache_key($groupid) : $this->get_user_cache_key($userid);
+        $cache = $this->get_cache();
+        $cache->delete($key);
+    }
+
+    public function delete_all_overrides() {
+        global $DB;
+
+        $overrides = $DB->get_records('quiz_overrides', ['quiz' => $this->get_quiz_id()], '', 'id');
+
+        foreach ($overrides as $override) {
+            $this->delete_override($override->id);
+        }
+    }
+
+    public function delete_override($id) {
+        global $DB;
+
+        $this->check_capabilties();
+
+        // Find the override first, and record the data.
+        $override = $DB->get_record('quiz_overrides', ['id' => $id], '*', MUST_EXIST);
+
+        // Delete the events.
+        $eventssearchparams = ['modulename' => 'quiz', 'instance' => $this->get_quiz_id()];
+
+        if (!empty($override->userid)) {
+            $eventssearchparams['userid'] = (int) $override->userid;
+        }
+
+        if (!empty($override->groupid)) {
+            $eventssearchparams['groupid'] = (int) $override->groupid;
+        }
+
+        $events = $DB->get_records('event', $eventssearchparams);
+        foreach ($events as $event) {
+            $eventold = calendar_event::load($event);
+            $eventold->delete();
+        }
+
+        $DB->delete_records('quiz_overrides', ['id' => $id]);
+
+        // Clear the cache.
+        $this->clear_cache($override->userid, $override->groupid);
+
+        // Log deletion.
+        $this->log_deleted($id, $override->userid, $override->groupid);
+    }
+
+    private function check_capabilties() {
+        require_capability('mod/quiz:manageoverrides', $this->quizobj->get_context());
+    }
+
     private function get_quiz_id() {
         return $this->quizobj->get_quiz()->id;
     }
 
-    private function log_events($formdata) {
-        $groupid = $formdata['groupid'] ?? null;
-        $userid = $formdata['userid'] ?? null;
+    private function log_deleted($overrideid, $userid = null, $groupid = null) {
+        $params = $this->get_base_event_params();
+        $params['objectid'] = $overrideid;
 
-        // If created override.
-        if (empty($formdata['id'])) {
-            $this->log_created($userid, $groupid);
-        } else {
-            $this->log_updated($userid, $groupid);
+        if (!empty($userid)) {
+            $params['relateduserid'] = $userid;
+            user_override_deleted::create($params)->trigger();
+        }
+
+        if (!empty($groupid)) {
+            $params['other']['groupid'] = $groupid;
+            group_override_deleted::create($params)->trigger();
         }
     }
 
-    private function get_base_event_params() {
+    private function get_base_event_params($id) {
         return [
             'context' => $this->quizobj->get_context(),
             'other' => [
                 'quizid' => $this->get_quiz_id(),
             ],
+            'objectid' => $id,
         ];
     }
 
-    private function log_created($userid = null, $groupid = null) {
-        $params = $this->get_base_event_params();
+    private function log_created($id, $userid = null, $groupid = null) {
+        $params = $this->get_base_event_params($id);
 
         if (!empty($userid)) {
             $params['relateduserid'] = $userid;
@@ -166,8 +237,8 @@ class override_manager {
         }
     }
 
-    private function log_updated($userid = null, $groupid = null) {
-        $params = $this->get_base_event_params();
+    private function log_updated($id, $userid = null, $groupid = null) {
+        $params = $this->get_base_event_params($id);
 
         if (!empty($userid)) {
             $params['relateduserid'] = $userid;
