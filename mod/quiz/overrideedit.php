@@ -23,6 +23,7 @@
  */
 
 use mod_quiz\form\edit_override_form;
+use mod_quiz\override_manager;
 use mod_quiz\quiz_settings;
 
 require_once(__DIR__ . '/../../config.php');
@@ -122,97 +123,9 @@ if ($mform->is_cancelled()) {
 
 } else if ($fromform = $mform->get_data()) {
     // Process the data.
-    $fromform->quiz = $quiz->id;
-
-    // Replace unchanged values with null.
-    foreach ($keys as $key) {
-        if ($fromform->{$key} == $quiz->{$key}) {
-            $fromform->{$key} = null;
-        }
-    }
-
-    // See if we are replacing an existing override.
-    $userorgroupchanged = false;
-    if (empty($override->id)) {
-        $userorgroupchanged = true;
-    } else if (!empty($fromform->userid)) {
-        $userorgroupchanged = $fromform->userid !== $override->userid;
-    } else {
-        $userorgroupchanged = $fromform->groupid !== $override->groupid;
-    }
-
-    if ($userorgroupchanged) {
-        $conditions = [
-                'quiz' => $quiz->id,
-                'userid' => empty($fromform->userid) ? null : $fromform->userid,
-                'groupid' => empty($fromform->groupid) ? null : $fromform->groupid];
-        if ($oldoverride = $DB->get_record('quiz_overrides', $conditions)) {
-            // There is an old override, so we merge any new settings on top of
-            // the older override.
-            foreach ($keys as $key) {
-                if (is_null($fromform->{$key})) {
-                    $fromform->{$key} = $oldoverride->{$key};
-                }
-            }
-            // Set the course module id before calling quiz_delete_override().
-            $quiz->cmid = $cm->id;
-            quiz_delete_override($quiz, $oldoverride->id);
-        }
-    }
-
-    // Set the common parameters for one of the events we may be triggering.
-    $params = [
-        'context' => $context,
-        'other' => [
-            'quizid' => $quiz->id
-        ]
-    ];
-    if (!empty($override->id)) {
-        $fromform->id = $override->id;
-        $DB->update_record('quiz_overrides', $fromform);
-        $cachekey = $groupmode ? "{$fromform->quiz}_g_{$fromform->groupid}" : "{$fromform->quiz}_u_{$fromform->userid}";
-        cache::make('mod_quiz', 'overrides')->delete($cachekey);
-
-        // Determine which override updated event to fire.
-        $params['objectid'] = $override->id;
-        if (!$groupmode) {
-            $params['relateduserid'] = $fromform->userid;
-            $event = \mod_quiz\event\user_override_updated::create($params);
-        } else {
-            $params['other']['groupid'] = $fromform->groupid;
-            $event = \mod_quiz\event\group_override_updated::create($params);
-        }
-
-        // Trigger the override updated event.
-        $event->trigger();
-    } else {
-        unset($fromform->id);
-        $fromform->id = $DB->insert_record('quiz_overrides', $fromform);
-        $cachekey = $groupmode ? "{$fromform->quiz}_g_{$fromform->groupid}" : "{$fromform->quiz}_u_{$fromform->userid}";
-        cache::make('mod_quiz', 'overrides')->delete($cachekey);
-
-        // Determine which override created event to fire.
-        $params['objectid'] = $fromform->id;
-        if (!$groupmode) {
-            $params['relateduserid'] = $fromform->userid;
-            $event = \mod_quiz\event\user_override_created::create($params);
-        } else {
-            $params['other']['groupid'] = $fromform->groupid;
-            $event = \mod_quiz\event\group_override_created::create($params);
-        }
-
-        // Trigger the override created event.
-        $event->trigger();
-    }
-
-    quiz_update_open_attempts(['quizid' => $quiz->id]);
-    if ($groupmode) {
-        // Priorities may have shifted, so we need to update all of the calendar events for group overrides.
-        quiz_update_events($quiz);
-    } else {
-        // User override. We only need to update the calendar event for this user override.
-        quiz_update_events($quiz, $fromform);
-    }
+    $manager = new override_manager($quizobj);
+    $fromform->id = $overrideid;
+    $id = $manager->upsert_override($fromform);
 
     if (!empty($fromform->submitbutton)) {
         redirect($overridelisturl);
@@ -221,7 +134,7 @@ if ($mform->is_cancelled()) {
     // The user pressed the 'again' button, so redirect back to this page.
     $url->remove_params('cmid');
     $url->param('action', 'duplicate');
-    $url->param('id', $fromform->id);
+    $url->param('id', $id);
     redirect($url);
 
 }
