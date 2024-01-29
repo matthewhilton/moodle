@@ -40,6 +40,9 @@ class override_manager {
     private function validate_formdata($formdata) {
         global $DB;
 
+        // Ensure it is an object.
+        $formdata = (object) $formdata;
+
         // First ensure userid and groupid are both not set at the same time.
         if (!empty($formdata->userid) && !empty($formdata->groupid)) {
             throw new coding_exception("Userid and groupid were both set, but only one can be set at once.");
@@ -141,9 +144,15 @@ class override_manager {
     }
 
     private function clear_cache($userid = null, $groupid = null) {
-        $key = !empty($groupid) ? $this->get_group_cache_key($groupid) : $this->get_user_cache_key($userid);
         $cache = $this->get_cache();
-        $cache->delete($key);
+
+        if (!empty($userid)) {
+            $cache->delete($this->get_user_cache_key($userid));
+        }
+
+        if (!empty($groupid)) {
+            $cache->delete($this->get_group_cache_key($groupid));
+        }
     }
 
     public function delete_all_overrides() {
@@ -262,15 +271,15 @@ class override_manager {
         return $formdata;
     }
 
-    private function get_cache() {
+    public function get_cache() {
         return cache::make('mod_quiz', 'overrides');
     }
 
-    private function get_group_cache_key($groupid): string {
+    public function get_group_cache_key($groupid): string {
         return "{$this->get_quiz_id()}_g_{$groupid}";
     }
 
-    private function get_user_cache_key($userid): string {
+    public function get_user_cache_key($userid): string {
         return "{$this->get_quiz_id()}_u_{$userid}";
     }
 }
