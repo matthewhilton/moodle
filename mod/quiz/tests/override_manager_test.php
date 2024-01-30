@@ -1,5 +1,22 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace mod_quiz;
+
+use advanced_testcase;
 use mod_quiz\event\group_override_created;
 use mod_quiz\event\group_override_updated;
 use mod_quiz\event\user_override_created;
@@ -7,12 +24,23 @@ use mod_quiz\event\user_override_updated;
 use mod_quiz\override_manager;
 use mod_quiz\quiz_settings;
 
+/**
+ * Test for override_manager class
+ *
+ * @package   mod_quiz
+ * @copyright 2024 Matthew Hilton <matthewhilton@catalyst-au.net>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers    \mod_quiz\override_manager
+ */
 class override_manager_test extends advanced_testcase {
-    
+
+    /** @var quiz_settings $quizobj **/
     private $quizobj;
 
+    /** @var object $course **/
     private $course;
 
+    /** @var array Default quiz settings **/
     private const TEST_QUIZ_SETTINGS = [
         'attempts' => 5,
         'timeopen' => 100000000,
@@ -20,6 +48,9 @@ class override_manager_test extends advanced_testcase {
         'timelimit' => 10,
     ];
 
+    /**
+     * Sets up the tests
+     */
     public function setUp(): void {
         $this->resetAfterTest();
 
@@ -29,10 +60,28 @@ class override_manager_test extends advanced_testcase {
         $this->quizobj = quiz_settings::create($quiz->id);
     }
 
-    // TESTS TO ADD
-    // When a id is given, but it does not exist (error)
-    // When a user or group is given, and they do not matching existing (Error)
+    /**
+     * Utility function that replaces the placeholders in the given data.
+     * @param array $data
+     * @param array $placeholdervalues
+     * @return array the $data with the placeholders replaced
+     */
+    private function replace_placeholders(array $data, array $placeholdervalues) {
+        foreach ($data as $key => $value) {
+            $replacement = $placeholdervalues[$value] ?? null;
 
+            if (!empty($replacement)) {
+                $data[$key] = $replacement;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Provides values to test_upsert_override
+     * @return array
+     */
     public static function upsert_override_provider(): array {
         return [
             'create user override - no existing data' => [
@@ -415,27 +464,16 @@ class override_manager_test extends advanced_testcase {
     }
 
     /**
-     * Replaces the placeholders in the given data.
-     * @param array $data
-     * @param array $placeholdervalues
-     * @return array the $data with the placeholders replaced
-     */
-    private function replace_placeholders(array $data, array $placeholdervalues) {
-        foreach ($data as $key => $value) {
-            $replacement = $placeholdervalues[$value] ?? null;
-
-            if (!empty($replacement)) {
-                $data[$key] = $replacement;
-            }
-        }
-
-        return $data;
-    }
-
-    /**
+     * Tests upsert_override function
+     * @param array $existingdata If given, an existing override will be created.
+     * @param array $formdata The data being tested, simulating being submitted
+     * @param int $expectedrecordscreated The number of records that are expected to be created by upsert
+     * @param string $expectedeventclass an event class, which is expected to the emitted by upsert
+     * @param string $expectedexception if given, the test will expect an exception with this message.
      * @dataProvider upsert_override_provider
      */
-    public function test_upsert_override(array $existingdata, array $formdata, int $expectedrecordscreated, string $expectedeventclass, string $expectedexception = '') {
+    public function test_upsert_override(array $existingdata, array $formdata, int $expectedrecordscreated,
+        string $expectedeventclass, string $expectedexception = '') {
         global $DB;
         $this->setAdminUser();
         $user = $this->getDataGenerator()->create_user();
@@ -548,6 +586,9 @@ class override_manager_test extends advanced_testcase {
         }
     }
 
+    /**
+     * Tests delete_override function
+     */
     public function test_delete_override() {
         $this->setAdminUser();
         $user = $this->getDataGenerator()->create_user();
@@ -578,6 +619,10 @@ class override_manager_test extends advanced_testcase {
         $this->assertEmpty($cache->get($key));
     }
 
+    /**
+     * Provides values to the test_permissions test
+     * @return array
+     */
     public static function permissions_provider(): array {
         return [
             'no permissions' => [
@@ -592,6 +637,9 @@ class override_manager_test extends advanced_testcase {
     }
 
     /**
+     * Tests permission checking.
+     * @param array $permissiontogive an array of captype => permission to give to the test user
+     * @param string $expectedexception if given, the test will expect an exception with this message to be thrown.
      * @dataProvider permissions_provider
      */
     public function test_permissions(array $permissiontogive, $expectedexception) {

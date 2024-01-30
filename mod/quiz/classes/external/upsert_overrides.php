@@ -1,4 +1,18 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace mod_quiz\external;
 
@@ -12,7 +26,18 @@ use invalid_parameter_exception;
 use mod_quiz\override_manager;
 use mod_quiz\quiz_settings;
 
+/**
+ * Webservice for upserting quiz overrides.
+ *
+ * @package   mod_quiz
+ * @copyright 2024 Matthew Hilton <matthewhilton@catalyst-au.net>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class upsert_overrides extends external_api {
+    /**
+     * Defines parameters
+     * @return external_function_parameters
+     */
     public static function execute_parameters() {
         return new external_function_parameters([
             'overrides' => new external_multiple_structure(
@@ -31,6 +56,11 @@ class upsert_overrides extends external_api {
         ]);
     }
 
+    /**
+     * Executes function
+     * @param array $overrides array of override parameters
+     * @return array of [id, error], where id is the id of the created/upserted override, and error is any errors encountered.
+     */
     public static function execute($overrides) {
         // TODO validation stuff.
         return array_map(function($override) {
@@ -49,6 +79,9 @@ class upsert_overrides extends external_api {
         }, $overrides);
     }
 
+    /**
+     * Defines return type
+     */
     public static function execute_returns() {
         return new external_multiple_structure(
             new external_single_structure([

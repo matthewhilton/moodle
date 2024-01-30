@@ -1,4 +1,18 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace mod_quiz;
 
@@ -13,21 +27,45 @@ use mod_quiz\event\user_override_created;
 use mod_quiz\event\user_override_deleted;
 use mod_quiz\event\user_override_updated;
 
+/**
+ * Manager class for quiz overrides
+ *
+ * @package   mod_quiz
+ * @copyright 2024 Matthew Hilton <matthewhilton@catalyst-au.net>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class override_manager {
+
+    /** @var quiz_settings the quiz settings **/
     private $quizobj;
 
+    /** @var array quiz override properties that can be modified. **/
     private const KEYS = ['timeopen', 'timeclose', 'timelimit', 'attempts', 'password'];
 
+    /**
+     * Create override manager
+     * @param quiz_settings $quizobj the quiz settings to link to
+     */
     public function __construct($quizobj) {
         $this->quizobj = $quizobj;
     }
 
+    /**
+     * Returns the given override
+     * @param int $id quiz override id
+     * @return object quiz override, or null if not found
+     */
     public function get_override($id) {
         // TODO use cache?
         global $DB;
         return $DB->get_record('quiz_overrides', ['id' => $id]);
     }
 
+    /**
+     * Validates the formdata
+     * @param array $formdata data submitted by form, or passed from webservice
+     * @throws coding_exception if there are errors found
+     */ // TODO SHOULD this throw a different exception? Maybe w/ lang strings?
     private function validate_formdata($formdata) {
         global $DB;
         $formdata = (object) $formdata;
@@ -110,20 +148,33 @@ class override_manager {
         }
     }
 
+    /**
+     * Parses the formdata by finding only the given KEYS,
+     * then clearing any values that match the existing quiz. It then re-adds the user or group id.
+     * @param array $formdata
+     * @return array parsed formdata
+     */
     public function parse_formdata($formdata) {
+        $formdata = (array) $formdata;
+
         // Get the data from the form that we want to update.
-        $settings = array_intersect_key((array) $formdata, array_flip(self::KEYS));
+        $settings = array_intersect_key($formdata, array_flip(self::KEYS));
 
         // Remove values that are the same as currently in the quiz.
         $settings = $this->clear_unused_values($settings);
 
         // Add the user / group back as applicable.
-        $userorgroupdata = array_intersect_key((array) $formdata, array_flip(['userid', 'groupid']));
+        $userorgroupdata = array_intersect_key($formdata, array_flip(['userid', 'groupid']));
 
         return array_merge($settings, $userorgroupdata);
     }
 
-    public function upsert_override($formdata) {
+    /**
+     * Upserts the given override. If an id is given, it updates, otherwise it creates a new one.
+     * @param array $formdata
+     * @return int updated/inserted record id
+     */
+    public function upsert_override($formdata): int {
         global $DB;
 
         // Ensure its an array.
@@ -180,6 +231,11 @@ class override_manager {
         return $id;
     }
 
+    /**
+     * Deletes the override cache record for the given user/group
+     * @param int $userid
+     * @param int $groupid
+     */
     private function clear_cache($userid = null, $groupid = null) {
         $cache = $this->get_cache();
 
@@ -192,6 +248,9 @@ class override_manager {
         }
     }
 
+    /**
+     * Deletes all the overrides for the linked quiz
+     */
     public function delete_all_overrides() {
         global $DB;
 
@@ -202,6 +261,10 @@ class override_manager {
         }
     }
 
+    /**
+     * Deletes the given override
+     * @param $id override id to delete
+     */
     public function delete_override($id) {
         global $DB;
 
@@ -236,6 +299,9 @@ class override_manager {
         $this->log_deleted($id, $override->userid, $override->groupid);
     }
 
+    /**
+     * Requires the user has the override management capability
+     */
     private function check_capabilties() {
         require_capability('mod/quiz:manageoverrides', $this->quizobj->get_context());
     }
