@@ -13,13 +13,25 @@ class override_manager_test extends advanced_testcase {
 
     private $course;
 
+    private const TEST_QUIZ_SETTINGS = [
+        'attempts' => 5,
+        'timeopen' => 100000000,
+        'timeclose' => 10000001,
+        'timelimit' => 10,
+    ];
+
     public function setUp(): void {
         $this->resetAfterTest();
 
         $this->course = $this->getDataGenerator()->create_course(['groupmode' => SEPARATEGROUPS]);
-        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $this->course->id]);
+        $quizparams = array_merge(self::TEST_QUIZ_SETTINGS, ['course' => $this->course->id]);
+        $quiz = $this->getDataGenerator()->create_module('quiz', $quizparams);
         $this->quizobj = quiz_settings::create($quiz->id);
     }
+
+    // TESTS TO ADD
+    // When a id is given, but it does not exist (error)
+    // When a user or group is given, and they do not matching existing (Error)
 
     public static function upsert_override_provider(): array {
         return [
@@ -28,8 +40,8 @@ class override_manager_test extends advanced_testcase {
                 'formdata' => [
                     'userid' => ':userid',
                     'groupid' => null,
-                    'timeopen' => 999,
-                    'timeclose' => 1000,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
                     'timelimit' => 1,
                     'attempts' => 999,
                     'password' => 'test',
@@ -56,7 +68,7 @@ class override_manager_test extends advanced_testcase {
                 'formdata' => [
                     'userid' => ':userid',
                     'groupid' => null,
-                    'timeopen' => 111,
+                    'timeopen' => 50,
                     'timeclose' => null,
                     'timelimit' => null,
                     'attempts' => null,
@@ -70,8 +82,8 @@ class override_manager_test extends advanced_testcase {
                 'formdata' => [
                     'userid' => null,
                     'groupid' => ':groupid',
-                    'timeopen' => 999,
-                    'timeclose' => 1000,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
                     'timelimit' => 1,
                     'attempts' => 999,
                     'password' => 'test',
@@ -98,7 +110,7 @@ class override_manager_test extends advanced_testcase {
                 'formdata' => [
                     'userid' => null,
                     'groupid' => ':groupid',
-                    'timeopen' => 111,
+                    'timeopen' => 50,
                     'timeclose' => null,
                     'timelimit' => null,
                     'attempts' => null,
@@ -111,8 +123,8 @@ class override_manager_test extends advanced_testcase {
                 'existingdata' => [
                     'userid' => ':userid',
                     'groupid' => null,
-                    'timeopen' => 222,
-                    'timeclose' => 223,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
                     'timelimit' => 2,
                     'attempts' => 2,
                     'password' => 'test2',
@@ -121,8 +133,8 @@ class override_manager_test extends advanced_testcase {
                     'id' => ':existingid',
                     'userid' => ':userid',
                     'groupid' => null,
-                    'timeopen' => 999,
-                    'timeclose' => 1000,
+                    'timeopen' => 52,
+                    'timeclose' => 53,
                     'timelimit' => 1,
                     'attempts' => 999,
                     'password' => 'test',
@@ -134,8 +146,8 @@ class override_manager_test extends advanced_testcase {
                 'existingdata' => [
                     'userid' => null,
                     'groupid' => ':groupid',
-                    'timeopen' => 222,
-                    'timeclose' => 223,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
                     'timelimit' => 2,
                     'attempts' => 2,
                     'password' => 'test2',
@@ -144,8 +156,8 @@ class override_manager_test extends advanced_testcase {
                     'id' => ':existingid',
                     'userid' => null,
                     'groupid' => ':groupid',
-                    'timeopen' => 999,
-                    'timeclose' => 1000,
+                    'timeopen' => 52,
+                    'timeclose' => 53,
                     'timelimit' => 1,
                     'attempts' => 999,
                     'password' => 'test',
@@ -157,8 +169,8 @@ class override_manager_test extends advanced_testcase {
                 'existingdata' => [
                     'userid' => ':userid',
                     'groupid' => null,
-                    'timeopen' => 222,
-                    'timeclose' => 223,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
                     'timelimit' => 2,
                     'attempts' => 2,
                     'password' => 'test2',
@@ -167,8 +179,8 @@ class override_manager_test extends advanced_testcase {
                     'id' => ':existingid',
                     'userid' => null,
                     'groupid' => null,
-                    'timeopen' => 999,
-                    'timeclose' => 1000,
+                    'timeopen' => 52,
+                    'timeclose' => 53,
                     'timelimit' => 1,
                     'attempts' => 999,
                     'password' => 'test',
@@ -182,8 +194,8 @@ class override_manager_test extends advanced_testcase {
                 'formdata' => [
                     'userid' => ':userid',
                     'groupid' => ':groupid',
-                    'timeopen' => 999,
-                    'timeclose' => 1000,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
                     'timelimit' => 1,
                     'attempts' => 999,
                     'password' => 'test',
@@ -197,8 +209,8 @@ class override_manager_test extends advanced_testcase {
                 'formdata' => [
                     'userid' => null,
                     'groupid' => null,
-                    'timeopen' => 999,
-                    'timeclose' => 1000,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
                     'timelimit' => 1,
                     'attempts' => 999,
                     'password' => 'test',
@@ -243,6 +255,37 @@ class override_manager_test extends advanced_testcase {
                 'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'No settings were changed',
+            ],
+            'all settings submitted are the same as what is in the quiz (invalid - no change)' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => self::TEST_QUIZ_SETTINGS['timeopen'],
+                    'timeclose' => self::TEST_QUIZ_SETTINGS['timeclose'],
+                    'attempts' => self::TEST_QUIZ_SETTINGS['attempts'],
+                    'timelimit' => self::TEST_QUIZ_SETTINGS['timelimit'],
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 0,
+                'expectedevent' => '',
+                'expectedexception' => 'No settings were changed',
+            ],
+            'some settings submitted are the same as what is in the quiz (valid)' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    // Make these the same, they should be ignored.
+                    'timeopen' => self::TEST_QUIZ_SETTINGS['timeopen'],
+                    'timeclose' => self::TEST_QUIZ_SETTINGS['timeclose'],
+                    'attempts' => self::TEST_QUIZ_SETTINGS['attempts'],
+                    // However change this, this should still get updated.
+                    'timelimit' => self::TEST_QUIZ_SETTINGS['timelimit'] + 5,
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 1,
+                'expectedevent' => user_override_created::class,
             ],
             'user id is invalid' => [
                 'existingdata' => [],
@@ -455,7 +498,13 @@ class override_manager_test extends advanced_testcase {
         $readback = $DB->get_record('quiz_overrides', ['id' => $id]);
 
         foreach ($formdata as $key => $value) {
-            $this->assertEquals($value, $readback->{$key});
+            // If the value is the same as the quiz, we expect it to be null.
+            if (!empty(self::TEST_QUIZ_SETTINGS[$key]) && $value == self::TEST_QUIZ_SETTINGS[$key]) {
+                $this->assertNull($readback->{$key});
+            } else {
+                // Else we expect the value to have been set.
+                $this->assertEquals($value, $readback->{$key});
+            }
         }
 
         // Check that the cache was cleared (if expected to be a valid change).
@@ -474,18 +523,19 @@ class override_manager_test extends advanced_testcase {
         }
 
         // Check that the calendar events are created as well.
+        // Only if the times were set, and they were set differently to the default.
         $expectedcount = 0;
 
-        if (!empty($formdata['timeopen'])) {
+        if (!empty($formdata['timeopen']) && $formdata['timeopen'] != self::TEST_QUIZ_SETTINGS['timeopen']) {
             $expectedcount += 1;
         }
 
-        if (!empty($formdata['timeclose'])) {
+        if (!empty($formdata['timeclose']) && $formdata['timeclose'] != self::TEST_QUIZ_SETTINGS['timeclose']) {
             $expectedcount += 1;
         }
 
-        // Find all events. We assume the test event times do not exceed 99999.
-        $events = calendar_get_events(0, 99999, [$user->id], [$groupid], false);
+        // Find all events. We assume the test event times do not exceed 999.
+        $events = calendar_get_events(0, 999, [$user->id], [$groupid], false);
         $this->assertCount($expectedcount, $events);
 
         // Check the expected event was also emitted.
