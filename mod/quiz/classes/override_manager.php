@@ -5,6 +5,7 @@ namespace mod_quiz;
 use cache;
 use calendar_event;
 use coding_exception;
+use core_user;
 use mod_quiz\event\group_override_created;
 use mod_quiz\event\group_override_deleted;
 use mod_quiz\event\group_override_updated;
@@ -21,29 +22,26 @@ class override_manager {
         $this->quizobj = $quizobj;
     }
 
-    /*
-     * TODO process
-     * Get quiz id
-     * Find existing overrides -> apply these settings ontop of them.
-     * *** FOR some reason - delete the old override ???
-     * Insert or update the record + update the cache
-     * Trigger events
-     * quiz_update_open_attempts
-     * quiz_update_events based on group mode
-     * redirect
-     */
-
-    /**
-     * TODO If updating one, but the group or user is the same as an existing one, merge them
-     */
-
     private function validate_formdata($formdata) {
         global $DB;
-
-        // Ensure it is an object.
         $formdata = (object) $formdata;
 
-        // First ensure userid and groupid are both not set at the same time.
+        // If there are no settings being overwritten, error.
+        $datatocheck = array_intersect_key((array) $formdata, array_flip(self::KEYS));
+
+        // If itself is empty, or no values are truthy.
+        $isempty = empty($datatocheck) || count(array_filter((array) $datatocheck)) == 0;
+
+        if ($isempty) {
+            throw new coding_exception("No settings were changed");
+        }
+
+        // Ensure the dates make sense (if both are given).
+        if (!empty($formdata->timeopen) && !empty($formdata->timeclose) && $formdata->timeclose <= $formdata->timeopen) {
+            throw new coding_exception("Close time cannot be before or the same as the open time.");
+        }
+
+        // Ensure that userid and groupid are not both set at the same time.
         if (!empty($formdata->userid) && !empty($formdata->groupid)) {
             throw new coding_exception("Userid and groupid were both set, but only one can be set at once.");
         }
@@ -51,6 +49,16 @@ class override_manager {
         // Ensure they at least one of them is set.
         if (empty($formdata->userid) && empty($formdata->groupid)) {
             throw new coding_exception("Either userid or groupid must be set");
+        }
+
+        // If userid is set, validate it is a valid user.
+        if (!empty($formdata->userid) && !core_user::is_real_user($formdata->userid, true)) {
+            throw new coding_exception("User id invalid");
+        }
+
+        // If groupid is set, validate it is a real group.
+        if (!empty($formdata->groupid) && empty(groups_get_group($formdata->groupid))) {
+            throw new coding_exception("Group is invalid");
         }
 
         // Ensure an override does not exist already for this user / group in this quiz.
@@ -99,11 +107,11 @@ class override_manager {
         // Ensure logged in user can manage overrides.
         $this->check_capabilties();
 
-        // Validate the formdata. We cannot assume it is valid.
-        $this->validate_formdata($formdata);
-
-        // Validate and get the data submitted by the form.
+        // Extract only the necessary data.
         $datatoset = $this->parse_formdata($formdata);
+
+        // Validate the formdata. We cannot assume it is valid.
+        $this->validate_formdata($datatoset);
 
         // Add the quiz ID.
         $datatoset['quiz'] = $this->get_quiz_id();
@@ -211,7 +219,7 @@ class override_manager {
     }
 
     private function log_deleted($overrideid, $userid = null, $groupid = null) {
-        $params = $this->get_base_event_params();
+        $params = $this->get_base_event_params($overrideid);
         $params['objectid'] = $overrideid;
 
         if (!empty($userid)) {
