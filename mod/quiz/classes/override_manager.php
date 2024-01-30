@@ -93,6 +93,9 @@ class override_manager {
     public function upsert_override($formdata) {
         global $DB;
 
+        // Ensure its an array.
+        $formdata = (array) $formdata;
+
         // Ensure logged in user can manage overrides.
         $this->check_capabilties();
 
@@ -106,9 +109,9 @@ class override_manager {
         $datatoset['quiz'] = $this->get_quiz_id();
 
         // Update the DB record.
-        if (!empty($formdata->id)) {
-            $datatoset['id'] = $formdata->id;
-            $id = $formdata->id;
+        if (!empty($formdata['id'])) {
+            $datatoset['id'] = $formdata['id'];
+            $id = $formdata['id'];
             $DB->update_record('quiz_overrides', $datatoset);
         } else {
             $id = $DB->insert_record('quiz_overrides', $datatoset);
@@ -121,7 +124,7 @@ class override_manager {
         $this->clear_cache($userid, $groupid);
 
         // Trigger moodle events.
-        if (empty($formdata->id)) {
+        if (empty($formdata['id'])) {
             $this->log_created($id, $userid, $groupid);
         } else {
             $this->log_updated($id, $userid, $groupid);

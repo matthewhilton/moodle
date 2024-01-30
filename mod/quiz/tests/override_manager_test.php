@@ -31,7 +31,32 @@ class override_manager_test extends advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedcountchange' => 1,
-                'expectedvalid' => true,
+            ],
+            'create user override - no calendar events should be created' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => null, // Because both timeopen and timeclose are null, no events should be created.
+                    'timeclose' => null,
+                    'timelimit' => 1,
+                    'attempts' => 999,
+                    'password' => 'test',
+                ],
+                'expectedcountchange' => 1,
+            ],
+            'create user override - only timeopen' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => 111,
+                    'timeclose' => null,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => 'test',
+                ],
+                'expectedcountchange' => 1,
             ],
             'create group override - no existing data' => [
                 'existingdata' => [],
@@ -45,7 +70,32 @@ class override_manager_test extends advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedcountchange' => 1,
-                'expectedvalid' => true,
+            ],
+            'create group override - no calendar events should be created' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'userid' => null,
+                    'groupid' => ':groupid',
+                    'timeopen' => null,
+                    'timeclose' => null, // Because both timeopen and timeclose are null, no events should be created.
+                    'timelimit' => 1,
+                    'attempts' => 999,
+                    'password' => 'test',
+                ],
+                'expectedcountchange' => 1,
+            ],
+            'create group override - only timeopen' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'userid' => null,
+                    'groupid' => ':groupid',
+                    'timeopen' => 111,
+                    'timeclose' => null,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'expectedcountchange' => 1,
             ],
             'update user override - updating existing data' => [
                 'existingdata' => [
@@ -68,11 +118,46 @@ class override_manager_test extends advanced_testcase {
                     'password' => 'test',
                 ],
                 'expectedcountchange' => 0,
-                'expectedvalid' => true,
+            ],
+            'saving both group and userid - expected invalid' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'id' => ':existingid',
+                    'userid' => ':userid',
+                    'groupid' => ':groupid',
+                    'timeopen' => 999,
+                    'timeclose' => 1000,
+                    'timelimit' => 1,
+                    'attempts' => 999,
+                    'password' => 'test',
+                ],
+                'expectedcountchange' => 0,
+                'expectedexception' => 'Userid and groupid were both set, but only one can be set at once.',
+            ],
+            'saving neither group nor userid - expected invalid' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'id' => ':existingid',
+                    'userid' => null,
+                    'groupid' => null,
+                    'timeopen' => 999,
+                    'timeclose' => 1000,
+                    'timelimit' => 1,
+                    'attempts' => 999,
+                    'password' => 'test',
+                ],
+                'expectedcountchange' => 0,
+                'expectedexception' => 'Either userid or groupid must be set',
             ],
         ];
     }
 
+    /**
+     * Replaces the placeholders in the given data.
+     * @param array $data
+     * @param array $placeholdervalues
+     * @return array the $data with the placeholders replaced
+     */
     private function replace_placeholders(array $data, array $placeholdervalues) {
         foreach ($data as $key => $value) {
             $replacement = $placeholdervalues[$value] ?? null;
@@ -88,7 +173,7 @@ class override_manager_test extends advanced_testcase {
     /**
      * @dataProvider upsert_override_provider
      */
-    public function test_upsert_override(array $existingdata, array $formdata, int $expectedcountchange, bool $expectedvalid) {
+    public function test_upsert_override(array $existingdata, array $formdata, int $expectedcountchange, string $expectedexception = '') {
         global $DB;
         $this->setAdminUser();
         $user = $this->getDataGenerator()->create_user();
@@ -110,11 +195,10 @@ class override_manager_test extends advanced_testcase {
 
         $formdata = $this->replace_placeholders($formdata, $placeholdervalues);
 
-        // TODO create any existing data.
         $manager = new override_manager($this->quizobj);
 
         // Put some test data in the cache, to ensure it gets deleted.
-        if ($expectedvalid) {
+        if (!empty($expectedexception)) {
             $cache = $manager->get_cache();
 
             if (!empty($formdata['userid'])) {
@@ -128,6 +212,11 @@ class override_manager_test extends advanced_testcase {
 
         // Get the count before.
         $beforecount = $DB->count_records('quiz_overrides');
+
+        // Expect an exception if specified by the test.
+        if (!empty($expectedexception)) {
+            $this->expectExceptionMessage($expectedexception);
+        }
 
         // Submit the form data.
         $id = $manager->upsert_override($formdata);
@@ -146,7 +235,7 @@ class override_manager_test extends advanced_testcase {
         // Check that the cache was cleared (if expected to be a valid change).
         // We set an intial value 'thisisatest' before the update. If it still reads this, it means it wasn't updated.
         // Generally it will now contain the quiz override object.
-        if ($expectedvalid) {
+        if (!empty($expectedexception)) {
             $cache = $manager->get_cache();
 
             if (!empty($formdata['userid'])) {
@@ -159,6 +248,21 @@ class override_manager_test extends advanced_testcase {
                 $this->assertNotEquals('thisisatest', $val);
             }
         }
+
+        // Check that the calendar events are created as well.
+        $expectedcount = 0;
+
+        if (!empty($formdata['timeopen'])) {
+            $expectedcount += 1;
+        }
+
+        if (!empty($formdata['timeclose'])) {
+            $expectedcount += 1;
+        }
+
+        // Find all events. We assume the test event times do not exceed 99999.
+        $events = calendar_get_events(0, 99999, [$user->id], [$groupid], false);
+        $this->assertCount($expectedcount, $events);
     }
 
     // Test invalid data.
