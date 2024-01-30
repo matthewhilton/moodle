@@ -22,6 +22,12 @@ class override_manager {
         $this->quizobj = $quizobj;
     }
 
+    public function get_override($id) {
+        // TODO use cache?
+        global $DB;
+        return $DB->get_record('quiz_overrides', ['id' => $id]);
+    }
+
     private function validate_formdata($formdata) {
         global $DB;
         $formdata = (object) $formdata;
@@ -34,6 +40,13 @@ class override_manager {
 
         if ($isempty) {
             throw new coding_exception("No settings were changed");
+        }
+
+        $existingdata = !empty($formdata->id) ? $this->get_override($formdata->id) : null;
+
+        // If id of existing is given, check that it exists.
+        if (!empty($formdata->id) && empty($existingdata)) {
+            throw new coding_exception("Quiz override ID specified does not exist");
         }
 
         // Ensure the dates make sense (if both are given).
@@ -59,6 +72,18 @@ class override_manager {
         // If groupid is set, validate it is a real group.
         if (!empty($formdata->groupid) && empty(groups_get_group($formdata->groupid))) {
             throw new coding_exception("Group is invalid");
+        }
+
+        // If updating, and the given userid does not match the existing userid.
+        if (!empty($existingdata->userid) && !empty($formdata->userid) && $existingdata->userid != $formdata->userid) {
+            throw new coding_exception("User id cannot be changed on existing overrides.
+                Delete the override, and make a new one instead.");
+        }
+
+        // If updating, and the given groupid does not match the existing groupid.
+        if (!empty($existingdata->groupid) && !empty($formdata->groupid) && $existingdata->groupid != $formdata->groupid) {
+            throw new coding_exception("Group id cannot be changed on existing overrides.
+                Delete the override, and make a new one instead.");
         }
 
         // Ensure an override does not exist already for this user / group in this quiz.

@@ -304,6 +304,70 @@ class override_manager_test extends advanced_testcase {
                 'expectedevent' => '',
                 'expectedexception' => 'Close time cannot be before or the same as the open time.',
             ],
+            'existing id given is invalid' => [
+                'existingdata' => [],
+                'formdata' => [
+                    'id' => -1,
+                    'userid' => ':userid',
+                    'groupid' => null,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 0,
+                'expectedevent' => '',
+                'expectedexception' => 'Quiz override ID specified does not exist',
+            ],
+            'user value changed when updated (not allowed)' => [
+                'existingdata' => [
+                    'userid' => ":userid",
+                    'groupid' => null,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
+                    'timelimit' => 2,
+                    'attempts' => 2,
+                    'password' => 'test2',
+                ],
+                'formdata' => [
+                    'id' => ':existingid',
+                    'userid' => ":user2id",
+                    'groupid' => null,
+                    'timeopen' => 50,
+                    'timeclose' => 51,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 1,
+                'expectedevent' => '',
+                'expectedexception' => 'User id cannot be changed on existing overrides.',
+            ],
+            'group value changed when updated (not allowed)' => [
+                'existingdata' => [
+                    'userid' => null,
+                    'groupid' => ':groupid',
+                    'timeopen' => 50,
+                    'timeclose' => 51,
+                    'timelimit' => 2,
+                    'attempts' => 2,
+                    'password' => 'test2',
+                ],
+                'formdata' => [
+                    'id' => ':existingid',
+                    'userid' => null,
+                    'groupid' => ':group2id',
+                    'timeopen' => 50,
+                    'timeclose' => 51,
+                    'timelimit' => null,
+                    'attempts' => null,
+                    'password' => null,
+                ],
+                'expectedrecordscreated' => 1,
+                'expectedevent' => '',
+                'expectedexception' => 'Group id cannot be changed on existing overrides.',
+            ],
         ];
     }
 
@@ -333,12 +397,19 @@ class override_manager_test extends advanced_testcase {
         $this->setAdminUser();
         $user = $this->getDataGenerator()->create_user();
         $this->getDataGenerator()->enrol_user($user->id, $this->course->id);
+
+        $user2 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user2->id, $this->course->id);
+
         $groupid = groups_create_group((object) ['courseid' => $this->course->id, 'name' => 'test']);
+        $group2id = groups_create_group((object) ['courseid' => $this->course->id, 'name' => 'test2']);
 
         // Replace any userid or groupid placeholders in the form data or existing data.
         $placeholdervalues = [
             ':userid' => $user->id,
+            ':user2id' => $user2->id,
             ':groupid' => $groupid,
+            ':group2id' => $group2id,
         ];
 
         if (!empty($existingdata)) {
