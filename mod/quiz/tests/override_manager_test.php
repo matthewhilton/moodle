@@ -34,7 +34,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 1,
+                'expectedrecordscreated' => 1,
                 'expectedevent' => user_override_created::class,
             ],
             'create user override - no calendar events should be created' => [
@@ -48,7 +48,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 1,
+                'expectedrecordscreated' => 1,
                 'expectedevent' => user_override_created::class,
             ],
             'create user override - only timeopen' => [
@@ -62,7 +62,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => null,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 1,
+                'expectedrecordscreated' => 1,
                 'expectedevent' => user_override_created::class,
             ],
             'create group override - no existing data' => [
@@ -76,7 +76,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 1,
+                'expectedrecordscreated' => 1,
                 'expectedevent' => group_override_created::class,
             ],
             'create group override - no calendar events should be created' => [
@@ -90,7 +90,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 1,
+                'expectedrecordscreated' => 1,
                 'expectedevent' => group_override_created::class,
             ],
             'create group override - only timeopen' => [
@@ -104,7 +104,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => null,
                     'password' => null,
                 ],
-                'expectedcountchange' => 1,
+                'expectedrecordscreated' => 1,
                 'expectedevent' => group_override_created::class,
             ],
             'update user override - updating existing data' => [
@@ -127,7 +127,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => user_override_updated::class,
             ],
             'update group override - updating existing data' => [
@@ -150,7 +150,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => group_override_updated::class,
             ],
             'update override, but new data has no user or group set' => [
@@ -173,7 +173,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'Either userid or groupid must be set',
             ],
@@ -188,7 +188,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'Userid and groupid were both set, but only one can be set at once.',
             ],
@@ -203,7 +203,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => 999,
                     'password' => 'test',
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'Either userid or groupid must be set',
             ],
@@ -225,7 +225,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => null,
                     'password' => null,
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'No settings were changed',
             ],
@@ -240,7 +240,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => null,
                     'password' => null,
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'No settings were changed',
             ],
@@ -255,7 +255,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => null,
                     'password' => 'mypass',
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'User id invalid',
             ],
@@ -270,7 +270,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => null,
                     'password' => 'mypass',
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'Group is invalid',
             ],
@@ -285,7 +285,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => null,
                     'password' => null,
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'Close time cannot be before or the same as the open time.',
             ],
@@ -300,7 +300,7 @@ class override_manager_test extends advanced_testcase {
                     'attempts' => null,
                     'password' => null,
                 ],
-                'expectedcountchange' => 0,
+                'expectedrecordscreated' => 0,
                 'expectedevent' => '',
                 'expectedexception' => 'Close time cannot be before or the same as the open time.',
             ],
@@ -328,7 +328,7 @@ class override_manager_test extends advanced_testcase {
     /**
      * @dataProvider upsert_override_provider
      */
-    public function test_upsert_override(array $existingdata, array $formdata, int $expectedcountchange, string $expectedeventclass, string $expectedexception = '') {
+    public function test_upsert_override(array $existingdata, array $formdata, int $expectedrecordscreated, string $expectedeventclass, string $expectedexception = '') {
         global $DB;
         $this->setAdminUser();
         $user = $this->getDataGenerator()->create_user();
@@ -378,7 +378,7 @@ class override_manager_test extends advanced_testcase {
 
         // Get the count after and compare to the expected.
         $aftercount = $DB->count_records('quiz_overrides');
-        $this->assertEquals($expectedcountchange, $aftercount - $beforecount);
+        $this->assertEquals($expectedrecordscreated, $aftercount - $beforecount);
 
         // Read back the created/updated value, and compare it to the formdata.
         $readback = $DB->get_record('quiz_overrides', ['id' => $id]);

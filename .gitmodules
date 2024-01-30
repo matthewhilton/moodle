@@ -1,0 +1,3 @@
+[submodule "webservice/restful"]
+	path = webservice/restful
+	url = git@github.com:catalyst/moodle-webservice_restful.git

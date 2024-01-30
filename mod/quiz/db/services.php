@@ -231,4 +231,12 @@ $functions = [
         'capabilities'  => 'mod/quiz:manage',
         'ajax'          => true,
     ],
+
+    'mod_quiz_upsert_overrides' => [
+        'classname'     => 'mod_quiz\external\upsert_overrides',
+        'description'   => 'Update or insert quiz overrides',
+        'type'          => 'write',
+        'capabilities'  => 'mod/quiz:manageoverrides',
+        'ajax'          => true,
+    ],
 ];

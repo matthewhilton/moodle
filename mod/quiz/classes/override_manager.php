@@ -110,16 +110,17 @@ class override_manager {
         // Extract only the necessary data.
         $datatoset = $this->parse_formdata($formdata);
 
-        // Validate the formdata. We cannot assume it is valid.
-        $this->validate_formdata($datatoset);
-
         // Add the quiz ID.
         $datatoset['quiz'] = $this->get_quiz_id();
 
+        $id = $formdata['id'] ?? 0;
+        $datatoset['id'] = $id;
+
+        // Validate the formdata.
+        $this->validate_formdata($datatoset);
+
         // Update the DB record.
-        if (!empty($formdata['id'])) {
-            $datatoset['id'] = $formdata['id'];
-            $id = $formdata['id'];
+        if (!empty($id)) {
             $DB->update_record('quiz_overrides', $datatoset);
         } else {
             $id = $DB->insert_record('quiz_overrides', $datatoset);
