@@ -23,6 +23,7 @@ use mod_quiz\event\user_override_created;
 use mod_quiz\event\user_override_updated;
 use mod_quiz\override_manager;
 use mod_quiz\quiz_settings;
+use context_system;
 
 /**
  * Test for override_manager class
@@ -472,7 +473,7 @@ class override_manager_test extends advanced_testcase {
      * @param string $expectedexception if given, the test will expect an exception with this message.
      * @dataProvider upsert_override_provider
      */
-    public function test_upsert_override(array $existingdata, array $formdata, int $expectedrecordscreated,
+    public function test_upsert_and_get_override(array $existingdata, array $formdata, int $expectedrecordscreated,
         string $expectedeventclass, string $expectedexception = '') {
         global $DB;
         $this->setAdminUser();
@@ -545,6 +546,11 @@ class override_manager_test extends advanced_testcase {
             }
         }
 
+        // Check the get_all_overrides function returns this data as well.
+        $alloverrides = $manager->get_all_overrides();
+        $this->assertCount($aftercount, $alloverrides);
+        $this->assertTrue(in_array($id, array_keys((array) $alloverrides)));
+
         // Check that the cache was cleared (if expected to be a valid change).
         // We set an intial value 'thisisatest' before the update. If it still reads this, it means it wasn't updated.
         // Generally it will now contain the quiz override object.
@@ -561,7 +567,7 @@ class override_manager_test extends advanced_testcase {
         }
 
         // Check that the calendar events are created as well.
-        // Only if the times were set, and they were set differently to the default.
+        // This is only if the times were set, and they were set differently to the default.
         $expectedcount = 0;
 
         if (!empty($formdata['timeopen']) && $formdata['timeopen'] != self::TEST_QUIZ_SETTINGS['timeopen']) {
@@ -572,7 +578,7 @@ class override_manager_test extends advanced_testcase {
             $expectedcount += 1;
         }
 
-        // Find all events. We assume the test event times do not exceed 999.
+        // Find all events. We assume the test event times do not exceed a time of 999.
         $events = calendar_get_events(0, 999, [$user->id], [$groupid], false);
         $this->assertCount($expectedcount, $events);
 
@@ -585,6 +591,8 @@ class override_manager_test extends advanced_testcase {
             $this->assertTrue(in_array($expectedeventclass, $eventclasses));
         }
     }
+
+    // Test delete all override as well - maybe pass in func ?
 
     /**
      * Tests delete_override function
@@ -624,14 +632,32 @@ class override_manager_test extends advanced_testcase {
      * @return array
      */
     public static function permissions_provider(): array {
+        // Define some functions to call for the test.
+        // Note the data itself is irrelevant, as permissions should always be checked first.
+        $upsert = fn($manager) => $manager->upsert_override([]);
+        $get = fn($manager) => $manager->get_all_overrides();
+        $delete = fn($manager) => $manager->delete_override(-1);
+
         return [
-            'no permissions' => [
+            'no permissions - upserting' => [
                 'permissions' => [],
                 'expectedexception' => 'Sorry, but you do not currently have permissions to do that',
+                'function' => $upsert,
+            ],
+            'no permissions - getting' => [
+                'permissions' => [],
+                'expectedexception' => 'Sorry, but you do not currently have permissions to do that',
+                'function' => $get,
+            ],
+            'no permissions - deleting' => [
+                'permissions' => [],
+                'expectedexception' => 'Sorry, but you do not currently have permissions to do that',
+                'function' => $delete,
             ],
             'has permissions' => [
                 'permissions' => ['mod/quiz:manageoverrides' => CAP_ALLOW],
                 'expectedexception' => null,
+                'function' => $get,
             ],
         ];
     }
@@ -642,7 +668,7 @@ class override_manager_test extends advanced_testcase {
      * @param string $expectedexception if given, the test will expect an exception with this message to be thrown.
      * @dataProvider permissions_provider
      */
-    public function test_permissions(array $permissiontogive, $expectedexception) {
+    public function test_permissions(array $permissiontogive, $expectedexception, $functiontoexecute) {
         // Setup the role and permissions.
         $roleid = $this->getDataGenerator()->create_role();
         foreach ($permissiontogive as $capname => $permission) {
@@ -658,11 +684,8 @@ class override_manager_test extends advanced_testcase {
 
         $this->setUser($user);
 
-        // Try edit.
+        // Execute the function defined by the test, using the created manager.
         $manager = new override_manager($this->quizobj);
-        $manager->upsert_override([
-            'userid' => $user->id,
-            'password' => 'test',
-        ]);
+        $functiontoexecute($manager);
     }
 }

@@ -42,6 +42,19 @@ class override_manager {
     /** @var array quiz override properties that can be modified. **/
     private const KEYS = ['timeopen', 'timeclose', 'timelimit', 'attempts', 'password'];
 
+    public static function create_from_override($overrideid) {
+        $override = self::get_override_record($overrideid);
+
+        // TODO some validation here...
+        $quizobj = quiz_settings::create($override->quiz);
+        return new override_manager($quizobj);
+    }
+
+    public static function create_from_quiz($quizid) {
+        $quizobj = quiz_settings::create($quizid);
+        return new override_manager($quizobj);
+    }
+
     /**
      * Create override manager
      * @param quiz_settings $quizobj the quiz settings to link to
@@ -51,14 +64,23 @@ class override_manager {
     }
 
     /**
-     * Returns the given override
-     * @param int $id quiz override id
-     * @return object quiz override, or null if not found
+     * Returns all overrides for the linked quiz
+     * @return array
      */
-    public function get_override($id) {
-        // TODO use cache?
+    public function get_all_overrides() {
         global $DB;
-        return $DB->get_record('quiz_overrides', ['id' => $id]);
+        $this->check_capabilties();
+        return $DB->get_records('quiz_overrides', ['quiz' => $this->get_quiz_id()]);
+    }
+
+    private static function get_override_record($id, $strictness = MUST_EXIST) {
+        global $DB;
+        return $DB->get_record('quiz_overrides', ['id' => $id], '*', $strictness);
+    }
+    
+    // TODO unit tests.
+    public function get_context() {
+        return $this->quizobj->get_context();
     }
 
     /**
@@ -80,7 +102,7 @@ class override_manager {
             throw new coding_exception("No settings were changed");
         }
 
-        $existingdata = !empty($formdata->id) ? $this->get_override($formdata->id) : null;
+        $existingdata = !empty($formdata->id) ? $this->get_override_record($formdata->id, IGNORE_MISSING) : null;
 
         // If id of existing is given, check that it exists.
         if (!empty($formdata->id) && empty($existingdata)) {
@@ -186,10 +208,10 @@ class override_manager {
         // Extract only the necessary data.
         $datatoset = $this->parse_formdata($formdata);
 
+        $id = $formdata['id'] ?? 0;
+
         // Add the quiz ID.
         $datatoset['quiz'] = $this->get_quiz_id();
-
-        $id = $formdata['id'] ?? 0;
         $datatoset['id'] = $id;
 
         // Validate the formdata.
