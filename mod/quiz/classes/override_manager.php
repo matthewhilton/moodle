@@ -30,6 +30,9 @@ use invalid_parameter_exception;
 use lang_string;
 use required_capability_exception;
 
+defined('MOODLE_INTERNAL') || die();
+require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+
 /**
  * Manager class for quiz overrides
  *
