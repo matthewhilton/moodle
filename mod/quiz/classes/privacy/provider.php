@@ -34,6 +34,7 @@ use core_privacy\local\metadata\collection;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 use core_privacy\manager;
+use mod_quiz\override_manager;
 use mod_quiz\quiz_attempt;
 
 defined('MOODLE_INTERNAL') || die();
@@ -366,7 +367,7 @@ class provider implements
             );
 
         // Delete all overrides - do not log.
-        quiz_delete_all_overrides($quiz, false);
+        override_manager::create_from_quiz($quiz->id)->delete_all_overrides(false);
 
         // This will delete all question attempts, quiz attempts, and quiz grades for this quiz.
         quiz_delete_all_attempts($quiz);
@@ -411,8 +412,10 @@ class provider implements
                 'userid' => $user->id,
             ]);
 
+            $manager = new override_manager($quizobj->get_quizid());
+
             foreach ($overrides as $override) {
-                quiz_delete_override($quiz, $override->id, false);
+                $manager->delete_override($override->id, false);
             }
 
             // This will delete all question attempts, quiz attempts, and quiz grades for this quiz.
@@ -461,8 +464,10 @@ class provider implements
                 'userid' => $userid,
             ]);
 
+            $manager = new override_manager($quizobj->get_quizid());
+
             foreach ($overrides as $override) {
-                quiz_delete_override($quiz, $override->id, false);
+                $manager->delete_override($override->id, false);
             }
 
             // This will delete all question attempts, quiz attempts, and quiz grades for this user in the given quiz.

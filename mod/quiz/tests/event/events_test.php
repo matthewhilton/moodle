@@ -28,6 +28,7 @@ namespace mod_quiz\event;
 use mod_quiz\quiz_attempt;
 use mod_quiz\quiz_settings;
 use context_module;
+use mod_quiz\override_manager;
 
 /**
  * Unit tests for quiz events.
@@ -639,7 +640,7 @@ class events_test extends \advanced_testcase {
 
         // Trigger and capture the event.
         $sink = $this->redirectEvents();
-        quiz_delete_override($quiz, $override->id);
+        override_manager::create_from_quiz($quiz->id)->delete_override($override->id);
         $events = $sink->get_events();
         $event = reset($events);
 
@@ -669,7 +670,7 @@ class events_test extends \advanced_testcase {
 
         // Trigger and capture the event.
         $sink = $this->redirectEvents();
-        quiz_delete_override($quiz, $override->id);
+        override_manager::create_from_quiz($quiz->id)->delete_override($override->id);
         $events = $sink->get_events();
         $event = reset($events);
 

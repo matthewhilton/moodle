@@ -38,6 +38,7 @@ use mod_quiz\question\display_options;
 use mod_quiz\question\qubaids_for_quiz;
 use mod_quiz\question\qubaids_for_users_attempts;
 use core_question\statistics\questions\all_calculated_for_qubaid_condition;
+use mod_quiz\override_manager;
 use mod_quiz\quiz_attempt;
 use mod_quiz\quiz_settings;
 
@@ -190,7 +191,8 @@ function quiz_delete_instance($id) {
     $quiz = $DB->get_record('quiz', ['id' => $id], '*', MUST_EXIST);
 
     quiz_delete_all_attempts($quiz);
-    quiz_delete_all_overrides($quiz);
+
+    override_manager::create_from_quiz($quiz->id)->delete_all_overrides();
     quiz_delete_references($quiz->id);
 
     // We need to do the following deletes before we try and delete randoms, otherwise they would still be 'in use'.
@@ -212,86 +214,6 @@ function quiz_delete_instance($id) {
     $DB->delete_records('quiz', ['id' => $quiz->id]);
 
     return true;
-}
-
-/**
- * Deletes a quiz override from the database and clears any corresponding calendar events
- *
- * @param stdClass $quiz The quiz object.
- * @param int $overrideid The id of the override being deleted
- * @param bool $log Whether to trigger logs.
- * @return bool true on success
- */
-function quiz_delete_override($quiz, $overrideid, $log = true) {
-    global $DB;
-
-    if (!isset($quiz->cmid)) {
-        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course);
-        $quiz->cmid = $cm->id;
-    }
-
-    $override = $DB->get_record('quiz_overrides', ['id' => $overrideid], '*', MUST_EXIST);
-
-    // Delete the events.
-    if (isset($override->groupid)) {
-        // Create the search array for a group override.
-        $eventsearcharray = ['modulename' => 'quiz',
-            'instance' => $quiz->id, 'groupid' => (int)$override->groupid];
-        $cachekey = "{$quiz->id}_g_{$override->groupid}";
-    } else {
-        // Create the search array for a user override.
-        $eventsearcharray = ['modulename' => 'quiz',
-            'instance' => $quiz->id, 'userid' => (int)$override->userid];
-        $cachekey = "{$quiz->id}_u_{$override->userid}";
-    }
-    $events = $DB->get_records('event', $eventsearcharray);
-    foreach ($events as $event) {
-        $eventold = calendar_event::load($event);
-        $eventold->delete();
-    }
-
-    $DB->delete_records('quiz_overrides', ['id' => $overrideid]);
-    cache::make('mod_quiz', 'overrides')->delete($cachekey);
-
-    if ($log) {
-        // Set the common parameters for one of the events we will be triggering.
-        $params = [
-            'objectid' => $override->id,
-            'context' => context_module::instance($quiz->cmid),
-            'other' => [
-                'quizid' => $override->quiz
-            ]
-        ];
-        // Determine which override deleted event to fire.
-        if (!empty($override->userid)) {
-            $params['relateduserid'] = $override->userid;
-            $event = \mod_quiz\event\user_override_deleted::create($params);
-        } else {
-            $params['other']['groupid'] = $override->groupid;
-            $event = \mod_quiz\event\group_override_deleted::create($params);
-        }
-
-        // Trigger the override deleted event.
-        $event->add_record_snapshot('quiz_overrides', $override);
-        $event->trigger();
-    }
-
-    return true;
-}
-
-/**
- * Deletes all quiz overrides from the database and clears any corresponding calendar events
- *
- * @param stdClass $quiz The quiz object.
- * @param bool $log Whether to trigger logs.
- */
-function quiz_delete_all_overrides($quiz, $log = true) {
-    global $DB;
-
-    $overrides = $DB->get_records('quiz_overrides', ['quiz' => $quiz->id], 'id');
-    foreach ($overrides as $override) {
-        quiz_delete_override($quiz, $override->id, $log);
-    }
 }
 
 /**
@@ -1620,7 +1542,7 @@ function quiz_reset_userdata($data) {
     }
 
     if ($purgeoverrides) {
-        cache::make('mod_quiz', 'overrides')->purge();
+        override_manager::get_cache()->purge();
     }
 
     return $status;
@@ -2158,8 +2080,9 @@ function quiz_get_coursemodule_info($coursemodule) {
 function mod_quiz_cm_info_dynamic(cm_info $cm) {
     global $USER;
 
-    $cache = cache::make('mod_quiz', 'overrides');
-    $override = $cache->get("{$cm->instance}_u_{$USER->id}");
+    $manager = override_manager::create_from_quiz($cm->instance);
+    $cache = $manager->get_cache();
+    $override = $cache->get($manager->get_user_cache_key($USER->id));
 
     if (!$override) {
         $override = (object) [
@@ -2174,7 +2097,7 @@ function mod_quiz_cm_info_dynamic(cm_info $cm) {
         $closes = [];
         $groupings = groups_get_user_groups($cm->course, $USER->id);
         foreach ($groupings[0] as $groupid) {
-            $groupoverride = $cache->get("{$cm->instance}_g_{$groupid}");
+            $groupoverride = $cache->get($manager->get_group_cache_key($groupid));
             if (isset($groupoverride->timeopen)) {
                 $opens[] = $groupoverride->timeopen;
             }
