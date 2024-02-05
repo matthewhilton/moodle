@@ -38,6 +38,7 @@ require_once($CFG->libdir . '/questionlib.php');
 use mod_quiz\access_manager;
 use mod_quiz\event\attempt_submitted;
 use mod_quiz\grade_calculator;
+use mod_quiz\override_manager;
 use mod_quiz\question\bank\qbank_helper;
 use mod_quiz\question\display_options;
 use mod_quiz\quiz_attempt;
@@ -1599,10 +1600,9 @@ function quiz_process_group_deleted_in_course($courseid) {
     if (!$records) {
         return; // Nothing to do.
     }
-    $DB->delete_records_list('quiz_overrides', 'id', array_keys($records));
-    $cache = cache::make('mod_quiz', 'overrides');
     foreach ($records as $record) {
-        $cache->delete("{$record->quiz}_g_{$record->groupid}");
+        $manager = override_manager::create_from_quiz($record->quiz);
+        $manager->delete_override($record->id);
     }
     quiz_update_open_attempts(['quizid' => array_unique(array_column($records, 'quiz'))]);
 }

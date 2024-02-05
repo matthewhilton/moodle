@@ -23,6 +23,7 @@
  */
 
 use mod_quiz\form\edit_override_form;
+use mod_quiz\override_manager;
 use mod_quiz\quiz_settings;
 
 require_once(__DIR__ . '/../../config.php');
@@ -66,9 +67,7 @@ if (!empty($override->userid)) {
 if ($confirm) {
     require_sesskey();
 
-    // Set the course module id before calling quiz_delete_override().
-    $quiz->cmid = $cm->id;
-    quiz_delete_override($quiz, $override->id);
+    override_manager::create_from_quiz($quiz->id)->delete_override($override->id);
 
     redirect($cancelurl);
 }

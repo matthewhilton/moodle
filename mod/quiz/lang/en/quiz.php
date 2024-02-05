@@ -1078,6 +1078,19 @@ $string['questionversionlatest'] = 'v{$a} (latest)';
 $string['alwayslatest'] = 'Always latest';
 $string['gobacktoquiz'] = 'Go back';
 
+$string['quiz_override:cannotsetbothgroupanduser'] = 'Both group and user cannot be set at the same time';
+$string['quiz_override:invalidgroup'] = 'Group given does not exist';
+$string['quiz_override:invaliduser'] = 'User given does not exist';
+$string['quiz_override:timeclosebeforetimeopen'] = 'Closing time cannot be before or equal to opening time';
+$string['quiz_override:cannotchange'] = 'The user or group cannot be changed after an override is created';
+$string['quiz_override:mustsetuserorgroup'] = 'A user or group must be set';
+$string['quiz_override:invalidquiz'] = 'Quiz id set does not exist';
+$string['quiz_override:mustchangesetting'] = 'At least 1 setting must be changed';
+$string['quiz_override:multipleforuser'] = 'Multiple overrides cannot be made for the same user';
+$string['quiz_override:multipleforgroup'] = 'Multiple overrides cannot be made for the same group';
+$string['quiz_override:invalidattempts'] = 'Invalid attempts value';
+$string['quiz_override:invalidtimelimit'] = 'Invalid time limit value';
+
 // Deprecated since Moodle 4.0.
 $string['completionpass'] = 'Require passing grade';
 $string['completionpassdesc'] = 'Student must achieve a passing grade to complete this activity';

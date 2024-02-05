@@ -77,5 +77,23 @@ function xmldb_quiz_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2023112300, 'quiz');
     }
 
+    if ($oldversion < 2023112306) {
+        $table = new xmldb_table('quiz_overrides');
+
+        // Create fields needed for the new quiz_override persistent class.
+        $field1 = new xmldb_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $field2 = new xmldb_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $field3 = new xmldb_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $fields = [$field1, $field2, $field3];
+
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+
+        upgrade_mod_savepoint(true, 2023112306, 'quiz');
+    }
+
     return true;
 }
