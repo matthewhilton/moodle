@@ -27,6 +27,9 @@ use mod_quiz\event\user_override_updated;
 use context_module;
 use required_capability_exception;
 
+defined('MOODLE_INTERNAL') || die();
+require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+
 /**
  * Manager class for quiz overrides
  *
