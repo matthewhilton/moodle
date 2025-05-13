@@ -51,6 +51,10 @@ $string['redactor:exifremover:tooldoesnotexist'] = 'Redaction failed: ExifTool d
 $string['redactor:exifremover:toolpath'] = 'Path to ExifTool';
 $string['redactor:exifremover:toolpath_desc'] = 'To use the ExifTool, please provide the path to the ExifTool executable.
 Typically, on Unix/Linux systems, the path is /usr/bin/exiftool.';
+$string['redactor:pdfcleaner'] = 'PDF cleaner';
+$string['redactor:pdfcleaner:enabled'] =  'Enable PDF cleaner';
+$string['redactor:pdfcleaner:enabled_desc'] = 'Uses Ghostscript -dSAFER and ps2write device to remove Javascript from uploaded PDFs.';
+$string['redactor:pdfcleaner:failedprocess'] = 'Redaction failed: failed to process file with Ghostscript.';
 $string['privacy:metadata:file_conversions'] = 'A record of the file conversions performed by a user.';
 $string['privacy:metadata:file_conversion:usermodified'] = 'The user who started the file conversion.';
 $string['privacy:metadata:files'] = 'A record of the files uploaded or shared by users';
