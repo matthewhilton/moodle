@@ -29,7 +29,9 @@
  */
 
 use core\di;
+use core\email;
 use core\hook;
+use core\hook\email\before_email_to_user;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -5598,6 +5600,44 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml = '', 
                        $usetrueaddress = true, $replyto = '', $replytoname = '', $wordwrapwidth = 79) {
 
     global $CFG, $PAGE, $SITE;
+
+    // Put everything into an email object, so it can be accessed easily by hook subscribers.
+    $email = new email(
+        $user,
+        $from,
+        $subject,
+        $messagetext,
+        $messagehtml,
+        $attachment,
+        $attachname,
+        $usetrueaddress,
+        $replyto,
+        $replytoname,
+        $wordwrapwidth
+    );
+
+    // Allow plugins to modify or block this email.
+    $hook = new before_email_to_user($email);
+    \core\di::get(\core\hook\manager::class)->dispatch($hook);
+
+    // If blocked, log reason why and exit.
+    if ($hook->email->is_blocked()) {
+        debugging('email_to_user blocked: ' . implode(',', $hook->email->get_block_reasons()));
+        return false;
+    }
+
+    // Else, read back out the data from the hook, as it may have been modified by a hook callback.
+    $user = $hook->email->user;
+    $from = $hook->email->from;
+    $subject = $hook->email->subject;
+    $messagetext = $hook->email->messagetext;
+    $messagehtml = $hook->email->messagehtml;
+    $attachment = $hook->email->attachment;
+    $attachname = $hook->email->attachname;
+    $usetrueaddress = $hook->email->usetrueaddress;
+    $replyto = $hook->email->replyto;
+    $replytoname = $hook->email->replytoname;
+    $wordwrapwidth = $hook->email->wordwrapwidth;
 
     if (empty($user) or empty($user->id)) {
         debugging('Can not send email to null user', DEBUG_DEVELOPER);

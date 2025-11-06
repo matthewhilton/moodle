@@ -1,0 +1,9 @@
+issueNumber: MDL-87112
+notes:
+  core:
+    - message: >-
+        `email_to_user()` now emits a hook `before_email_to_user`. This hook
+        allows any subscriber to modify the email or add reasons that it should
+        be blocked. If any block reasons are added, the email is stopped from
+        being sent and the reasons are output.
+      type: improved
