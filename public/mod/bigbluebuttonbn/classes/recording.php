@@ -848,6 +848,12 @@ class recording extends persistent {
                     $foundcount++;
                 }
             }
+
+            // Notify users that the main recording is ready (don't notify for breakout recordings).
+            $task = new \mod_bigbluebuttonbn\task\send_recording_ready_notification();
+            $task->set_instance_id($recording->get_instance()->get_instance_id());
+            \core\task\manager::queue_adhoc_task($task);
+            $recording->set_status(recording::RECORDING_STATUS_NOTIFIED);
         }
 
         mtrace("=> Finished processing recordings. Updated status for {$foundcount} / {$recordingcount} recordings.");
