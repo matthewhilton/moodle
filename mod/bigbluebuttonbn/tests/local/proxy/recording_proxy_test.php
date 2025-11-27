@@ -91,6 +91,16 @@ final class recording_proxy_test extends \advanced_testcase {
             return $r->recordingid;
         }, $recordings);
         $recordings = recording_proxy::fetch_recordings([$recordingsid[0]]);
-        $this->assertCount(3, $recordings);
+
+        // 1 Main recording.
+        $this->assertCount(1, $recordings);
+        $recording = current($recordings);
+        $this->assertEquals('false', $recording['meta_isBreakout']);
+
+        // 2 Breakout recordings.
+        $this->assertCount(2, $recording['breakouts']);
+        $breakouts = array_values($recording['breakouts']);
+        $this->assertEquals('true', $breakouts[0]['meta_isBreakout']);
+        $this->assertEquals('true', $breakouts[1]['meta_isBreakout']);
     }
 }

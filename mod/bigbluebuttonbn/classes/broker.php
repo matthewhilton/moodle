@@ -76,56 +76,6 @@ class broker {
     }
 
     /**
-     * Helper for responding when recording ready is performed.
-     *
-     * @param instance $instance
-     * @param array $params
-     */
-    public static function process_recording_ready(instance $instance, array $params): void {
-        // Decodes the received JWT string.
-        try {
-            $decodedparameters = JWT::decode(
-                $params['signed_parameters'],
-                new Key(config::get('shared_secret'), 'HS256')
-            );
-        } catch (Exception $e) {
-            $error = 'Caught exception: ' . $e->getMessage();
-            header('HTTP/1.0 400 Bad Request. ' . $error);
-            return;
-        }
-
-        // Validations.
-        if (!isset($decodedparameters->record_id)) {
-            header('HTTP/1.0 400 Bad request. Missing record_id parameter');
-            return;
-        }
-
-        $recording = recording::get_record(['recordingid' => $decodedparameters->record_id]);
-        if (!isset($recording)) {
-            header('HTTP/1.0 400 Bad request. Invalid record_id');
-            return;
-        }
-
-        // Sends the messages.
-        try {
-            // We make sure messages are sent only once.
-            if ($recording->get('status') != recording::RECORDING_STATUS_NOTIFIED) {
-                $task = new \mod_bigbluebuttonbn\task\send_recording_ready_notification();
-                $task->set_instance_id($instance->get_instance_id());
-
-                \core\task\manager::queue_adhoc_task($task);
-
-                $recording->set('status', recording::RECORDING_STATUS_NOTIFIED);
-                $recording->update();
-            }
-            header('HTTP/1.0 202 Accepted');
-        } catch (Exception $e) {
-            $error = 'Caught exception: ' . $e->getMessage();
-            header('HTTP/1.0 503 Service Unavailable. ' . $error);
-        }
-    }
-
-    /**
      * Process meeting events for instance with provided HTTP headers.
      *
      * @param instance $instance

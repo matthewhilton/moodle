@@ -245,7 +245,7 @@ $string['config_extended_capabilities_description'] = 'Configuration for extende
 $string['config_uidelegation_enabled'] = 'UI delegation is enabled';
 $string['config_uidelegation_enabled_description'] = 'These settings enable or disable the UI delegation to the BigBlueButton server.';
 $string['config_recordingready_enabled'] = 'Send recording available notification';
-$string['config_recordingready_enabled_description'] = 'If enabled, a notification will be sent when a recording link is available. This feature requires the script post_publish_recording_ready_callback to be enabled on the BigBlueButton server.';
+$string['config_recordingready_enabled_description'] = 'If enabled, a notification will be sent when a recording link is available.';
 $string['config_meetingevents_enabled'] = 'Register live sessions';
 $string['config_meetingevents_enabled_description'] = 'If enabled, live sessions will be processed after the session ends. This feature is required for Activity completion and will only work if the BigBlueButton server is capable of processing post_events scripts.';
 
