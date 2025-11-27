@@ -278,11 +278,10 @@ class recording_proxy extends proxy_base {
         }
 
         $recordings = [];
-        // If there were recordings already created.
+        // Parse recordings.
         foreach ($xml->recordings->recording as $recordingxml) {
-            $recording = self::parse_recording($recordingxml);
-            $recordings[$recording['recordID']] = $recording;
-            // Check if there are any child.
+            // Check if there are any breakout rooms.
+            $breakouts = [];
             if (isset($recordingxml->breakoutRooms->breakoutRoom)) {
                 $breakoutrooms = [];
                 foreach ($recordingxml->breakoutRooms->breakoutRoom as $breakoutroom) {
@@ -291,14 +290,17 @@ class recording_proxy extends proxy_base {
                 if ($breakoutrooms) {
                     $xml = self::fetch_endpoint_xml('getRecordings', ['recordID' => implode(',', $breakoutrooms)]);
                     if ($xml && $xml->returncode == 'SUCCESS' && isset($xml->recordings)) {
-                        // If there were already created meetings.
                         foreach ($xml->recordings->recording as $subrecordingxml) {
-                            $recording = self::parse_recording($subrecordingxml);
-                            $recordings[$recording['recordID']] = $recording;
+                            $breakoutrecording = self::parse_recording($subrecordingxml);
+                            $breakouts[$breakoutrecording['recordID']] = $breakoutrecording;
                         }
                     }
                 }
             }
+
+            $recording = self::parse_recording($recordingxml);
+            $recording['breakouts'] = $breakouts;
+            $recordings[$recording['recordID']] = $recording;
         }
 
         return $recordings;
