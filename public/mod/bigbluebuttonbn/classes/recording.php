@@ -21,6 +21,7 @@ use context;
 use context_course;
 use context_module;
 use core\persistent;
+use mod_bigbluebuttonbn\local\config;
 use mod_bigbluebuttonbn\local\proxy\recording_proxy;
 use moodle_url;
 use stdClass;
@@ -819,34 +820,48 @@ class recording extends persistent {
         $foundcount = 0;
         foreach ($metadatas as $recordingid => $metadata) {
             mtrace("==> Found metadata for {$recordingid}.");
-            $id = array_search($recordingid, $recordingids);
-            if (!$id) {
-                // Recording was not found, skip.
-                mtrace("===> Skip as fetched recording was not found.");
+            $recordingrecord = current(array_filter($recordings, fn($recording) => $recording->recordingid == $recordingid));
+
+            // Moodle doesn't know about this, likely it didn't create it, so ignore.
+            if (empty($recordingrecord)) {
+                mtrace("===> Skipped as record does not exist in database.");
                 continue;
             }
+
             // Recording was found, update status.
             mtrace("===> Update local cache as fetched recording was found.");
-            $recording = new self(0, $recordings[$id], $metadata);
+            $recording = new self(0, $recordingrecord, $metadata);
             $recording->set_status(self::RECORDING_STATUS_PROCESSED);
             $foundcount++;
 
-            if (array_key_exists('breakouts', $metadata)) {
-                // Iterate breakout recordings (if any) and update status.
-                foreach ($metadata['breakouts'] as $breakoutrecordingid => $breakoutmetadata) {
-                    $breakoutrecording = self::get_record(['recordingid' => $breakoutrecordingid]);
-                    if (!$breakoutrecording) {
-                        $breakoutrecording = new recording(0, (object) [
-                            'courseid' => $recording->get('courseid'),
-                            'bigbluebuttonbnid' => $recording->get('bigbluebuttonbnid'),
-                            'groupid' => $recording->get('groupid'),
-                            'recordingid' => $breakoutrecordingid
-                        ], $breakoutmetadata);
-                        $breakoutrecording->create();
-                    }
-                    $breakoutrecording->set_status(self::RECORDING_STATUS_PROCESSED);
-                    $foundcount++;
+            // Iterate breakout recordings (if any) and update status.
+            foreach ($metadata['breakouts'] as $breakoutrecordingid => $breakoutmetadata) {
+                mtrace("===> Breakout recording {$breakoutrecordingid} found for room {$recordingid}.");
+                $breakoutrecording = self::get_record(['recordingid' => $breakoutrecordingid]);
+                if (!$breakoutrecording) {
+                    $breakoutrecording = new recording(0, (object) [
+                        'courseid' => $recording->get('courseid'),
+                        'bigbluebuttonbnid' => $recording->get('bigbluebuttonbnid'),
+                        'groupid' => $recording->get('groupid'),
+                        'recordingid' => $breakoutrecordingid,
+                    ], $breakoutmetadata);
+                    $breakoutrecording->create();
                 }
+                $breakoutrecording->set_status(self::RECORDING_STATUS_PROCESSED);
+                $foundcount++;
+                $recordingcount++;
+            }
+
+            // Send notifications, but only for the main recordings not breakout rooms.
+            $isbreakout = $metadata['meta_isBreakout'];
+            $alreadynotified = $recording->get('status') == self::RECORDING_STATUS_NOTIFIED;
+            $notificationsenabled = config::get('recordingready_enabled');
+            if ($notificationsenabled && !$isbreakout && !$alreadynotified) {
+                $task = new \mod_bigbluebuttonbn\task\send_recording_ready_notification();
+                $task->set_instance_id($recording->get_instance()->get_instance_id());
+                \core\task\manager::queue_adhoc_task($task);
+                $recording->set('status', self::RECORDING_STATUS_NOTIFIED);
+                $recording->update();
             }
         }
 

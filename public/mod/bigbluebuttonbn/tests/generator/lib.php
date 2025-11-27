@@ -219,6 +219,7 @@ class mod_bigbluebuttonbn_generator extends \testing_module_generator {
                 'headless' => false,
                 'imported' => false,
                 'status' => $data['status'] ?? recording::RECORDING_STATUS_NOTIFIED,
+                'isBreakout' => $data['isBreakout'] ?? false,
             ];
         }
 
@@ -368,9 +369,6 @@ class mod_bigbluebuttonbn_generator extends \testing_module_generator {
                 'bbb-recording-name' => $instance->get_meeting_name(),
             ],
         ]);
-        if ((boolean) config::get('recordingready_enabled')) {
-            $roomconfig['meta']['bbb-recording-ready-url'] = $instance->get_record_ready_url()->out(false);
-        }
         if ((boolean) config::get('meetingevents_enabled')) {
             $roomconfig['meta']['analytics-callback-url'] = $instance->get_meeting_event_notification_url()->out(false);
         }

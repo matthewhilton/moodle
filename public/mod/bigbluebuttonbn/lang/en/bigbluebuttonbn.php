@@ -167,7 +167,7 @@ $string['config_recording_safe_formats_description'] = 'Select the formats which
 All other formats are only viewable by teachers and other users with the mod/bigbluebuttonbn:viewallrecordingformats and
  mod/bigbluebuttonbn:managerecordings capabilities.';
 $string['config_recordingready_enabled'] = 'Send recording available notification';
-$string['config_recordingready_enabled_description'] = 'If enabled, a notification will be sent when a recording link is available. This feature requires the script post_publish_recording_ready_callback to be enabled on the BigBlueButton server.';
+$string['config_recordingready_enabled_description'] = 'If enabled, a notification will be sent when a recording link is available.';
 $string['config_recordings'] = 'Show recordings';
 $string['config_recordings_asc_sort'] = 'List recordings in chronological order';
 $string['config_recordings_asc_sort_description'] = 'Recordings are ordered by date, either chronological or reverse chronological order (most recent recording first).';
